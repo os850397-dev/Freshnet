@@ -1,1 +1,37 @@
-# Freshnet
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111111">
+  <title>Freshnet — Fil d'actualité</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="fil.html"><span class="brand-mark">F</span>Fresh<span>net</span></a>
+    <div class="user-box">
+      <span id="whoami"></span>
+      <button class="ghost-button" id="logoutButton" type="button">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="feed">
+    <form id="postForm" class="composer">
+      <textarea id="postContent" maxlength="500" rows="3" placeholder="Quoi de neuf ?" required></textarea>
+      <div class="composer-bar">
+        <small id="counter">0 / 500</small>
+        <button class="gold-button" type="submit">Publier</button>
+      </div>
+    </form>
+
+    <p id="feedMessage" class="message" role="status"></p>
+    <section id="posts" aria-label="Publications"></section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/feed.js"></script>
+</body>
+</html>
