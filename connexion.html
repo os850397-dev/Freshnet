@@ -1,108 +1,61 @@
-document.addEventListener('DOMContentLoaded', async () => {
-  const currentUser = await window.Freshnet.getCurrentUser();
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Freshnet — Connecter le monde, rapprocher les personnes.">
+  <meta name="theme-color" content="#111111">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Freshnet — Connexion</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="auth-page">
+  <main class="auth-card">
+    <a class="brand" href="index.html"><span class="brand-mark">F</span>Fresh<span>net</span></a>
 
-  if (!currentUser) {
-    window.location.href = 'connexion.html';
-    return;
-  }
+    <div class="tabs" role="tablist">
+      <button class="tab active" id="tabLogin" role="tab" type="button">Connexion</button>
+      <button class="tab" id="tabSignup" role="tab" type="button">Créer un compte</button>
+    </div>
 
-  const whoami = document.getElementById('whoami');
-  const logoutButton = document.getElementById('logoutButton');
-  const postForm = document.getElementById('postForm');
-  const postContent = document.getElementById('postContent');
-  const counter = document.getElementById('counter');
-  const postsRoot = document.getElementById('posts');
-  const feedMessage = document.getElementById('feedMessage');
+    <form id="loginForm">
+      <label>Email
+        <input type="email" id="loginEmail" required autocomplete="email">
+      </label>
+      <label>Mot de passe
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </label>
+      <button class="gold-button" type="submit">Se connecter</button>
+    </form>
 
-  if (whoami) {
-    whoami.textContent = currentUser.username || currentUser.email;
-  }
+    <form id="signupForm" hidden>
+      <label>Nom d'utilisateur
+        <input type="text" id="signupUsername" required minlength="3" maxlength="24" autocomplete="username">
+      </label>
+      <label>Email
+        <input type="email" id="signupEmail" required autocomplete="email">
+      </label>
+      <label>Mot de passe (6 caractères minimum)
+        <input type="password" id="signupPassword" required minlength="6" autocomplete="new-password">
+      </label>
+      <button class="gold-button" type="submit">Créer mon compte</button>
+    </form>
 
-  const renderPosts = (posts) => {
-    if (!postsRoot) return;
+    <p id="message" class="message" role="status"></p>
+  </main>
 
-    postsRoot.innerHTML = '';
-    posts.forEach((post) => {
-      const article = document.createElement('article');
-      article.className = 'post-card';
-
-      const head = document.createElement('div');
-      head.className = 'post-head';
-
-      const avatar = document.createElement('div');
-      avatar.className = 'avatar-mini';
-      avatar.textContent = (post.author || 'F').charAt(0).toUpperCase();
-
-      const meta = document.createElement('div');
-      const strong = document.createElement('strong');
-      strong.textContent = post.author || 'Utilisateur';
-      const small = document.createElement('small');
-      small.textContent = post.time || 'À l\'instant';
-      meta.appendChild(strong);
-      meta.appendChild(small);
-
-      head.appendChild(avatar);
-      head.appendChild(meta);
-
-      const content = document.createElement('p');
-      content.textContent = post.content;
-
-      article.appendChild(head);
-      article.appendChild(content);
-      postsRoot.appendChild(article);
-    });
-  };
-
-  const fetchPosts = async () => {
-    const posts = await window.Freshnet.getPosts();
-    renderPosts(posts || []);
-  };
-
-  if (counter && postContent) {
-    const updateCounter = () => {
-      counter.textContent = `${postContent.value.length} / 500`;
+  <script>
+    window.FreshnetConfig = {
+      supabaseUrl: 'https://klkcjtqqodeicqbgxfaa.supabase.co',
+      supabaseKey: 'sb_publishable_32Njy0xIgW5-gKmIwRG96w_KsJF9BW9'
     };
-    postContent.addEventListener('input', updateCounter);
-    updateCounter();
-  }
-
-  if (postForm && postContent) {
-    postForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const content = postContent.value.trim();
-
-      if (!content) {
-        if (feedMessage) {
-          feedMessage.textContent = 'Écris quelque chose avant de publier.';
-          feedMessage.className = 'message error';
-        }
-        return;
-      }
-
-      try {
-        await window.Freshnet.createPost(content);
-        postContent.value = '';
-        if (counter) counter.textContent = '0 / 500';
-        if (feedMessage) {
-          feedMessage.textContent = 'Publication ajoutée.';
-          feedMessage.className = 'message';
-        }
-        await fetchPosts();
-      } catch (error) {
-        if (feedMessage) {
-          feedMessage.textContent = error.message || 'Impossible de publier ce message.';
-          feedMessage.className = 'message error';
-        }
-      }
-    });
-  }
-
-  if (logoutButton) {
-    logoutButton.addEventListener('click', async () => {
-      await window.Freshnet.signOut();
-      window.location.href = 'connexion.html';
-    });
-  }
-
-  await fetchPosts();
-});
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

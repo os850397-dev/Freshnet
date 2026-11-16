@@ -1,7 +1,7 @@
 (function () {
   const app = window.Freshnet || {};
 
-  const fallbackStorage = {
+  const storage = {
     get(key, fallback) {
       try {
         const value = localStorage.getItem(key);
@@ -14,14 +14,12 @@
       try {
         localStorage.setItem(key, JSON.stringify(value));
       } catch {
-        // ignored in restricted browsers
       }
     },
     remove(key) {
       try {
         localStorage.removeItem(key);
       } catch {
-        // ignored in restricted browsers
       }
     }
   };
@@ -30,60 +28,60 @@
   const supabaseUrl = readConfigValue(window.FreshnetConfig?.supabaseUrl || window.SUPABASE_URL || '');
   const supabaseKey = readConfigValue(window.FreshnetConfig?.supabaseKey || window.SUPABASE_ANON_KEY || '');
 
-  const supabaseClient = (
+  const client =
     typeof window !== 'undefined' &&
     window.supabase &&
     supabaseUrl &&
     supabaseKey &&
     !supabaseUrl.includes('YOUR-') &&
     !supabaseKey.includes('YOUR-')
-  )
-    ? window.supabase.createClient(supabaseUrl, supabaseKey)
-    : null;
+      ? window.supabase.createClient(supabaseUrl, supabaseKey)
+      : null;
 
-  const isDemoOnly = !supabaseClient;
+  app.getSupabaseClient = () => client;
+  app.isSupabaseReady = () => Boolean(client);
 
-  const sanitizeText = (value) => String(value ?? '').replace(/[<>]/g, '').trim();
+  app.getUsers = () => storage.get('freshnet-users', []);
+  app.saveUsers = (users) => storage.set('freshnet-users', users);
 
-  app.isSupabaseReady = () => Boolean(supabaseClient);
-  app.isDemoMode = () => isDemoOnly;
-  app.getSupabaseClient = () => supabaseClient;
-
-  app.getUsers = () => fallbackStorage.get('freshnet-users', []);
-  app.saveUsers = (users) => fallbackStorage.set('freshnet-users', users);
   app.getCurrentUser = async () => {
-    if (supabaseClient) {
-      const { data: { user }, error } = await supabaseClient.auth.getUser();
+    if (client) {
+      const { data: { user }, error } = await client.auth.getUser();
       if (!error && user) {
-        return { id: user.id, email: user.email, username: user.user_metadata?.username || user.email.split('@')[0] };
+        return {
+          id: user.id,
+          email: user.email,
+          username: user.user_metadata?.username || user.email.split('@')[0]
+        };
       }
       return null;
     }
 
-    return fallbackStorage.get('freshnet-demo-user', null);
+    return storage.get('freshnet-demo-user', null);
   };
+
   app.setCurrentUser = (user) => {
     if (user) {
-      fallbackStorage.set('freshnet-demo-user', user);
+      storage.set('freshnet-demo-user', user);
     } else {
-      fallbackStorage.remove('freshnet-demo-user');
+      storage.remove('freshnet-demo-user');
     }
   };
 
   app.signUp = async ({ email, password, username }) => {
-    const sanitizedEmail = sanitizeText(email).toLowerCase();
-    const sanitizedPassword = String(password || '').trim();
-    const sanitizedUsername = sanitizeText(username).slice(0, 24);
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanPassword = String(password || '').trim();
+    const cleanUsername = String(username || '').trim().slice(0, 24);
 
-    if (!sanitizedEmail || !sanitizedPassword || sanitizedPassword.length < 6 || !sanitizedUsername) {
+    if (!cleanEmail || !cleanPassword || cleanPassword.length < 6 || !cleanUsername) {
       throw new Error('Email, nom d’utilisateur et mot de passe sont requis.');
     }
 
-    if (supabaseClient) {
-      const { data, error } = await supabaseClient.auth.signUp({
-        email: sanitizedEmail,
-        password: sanitizedPassword,
-        options: { data: { username: sanitizedUsername } }
+    if (client) {
+      const { data, error } = await client.auth.signUp({
+        email: cleanEmail,
+        password: cleanPassword,
+        options: { data: { username: cleanUsername } }
       });
 
       if (error) throw error;
@@ -91,29 +89,35 @@
     }
 
     const users = app.getUsers();
-    if (users.some((user) => user.email.toLowerCase() === sanitizedEmail)) {
+    if (users.some((user) => user.email.toLowerCase() === cleanEmail)) {
       throw new Error('Cette adresse e-mail est déjà utilisée.');
     }
 
-    const user = { id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), username: sanitizedUsername, email: sanitizedEmail, password: sanitizedPassword };
+    const user = {
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      username: cleanUsername,
+      email: cleanEmail,
+      password: cleanPassword
+    };
+
     users.push(user);
     app.saveUsers(users);
-    app.setCurrentUser({ id: user.id, email: user.email, username: user.username });
+    app.setCurrentUser({ id: user.id, username: user.username, email: user.email });
     return user;
   };
 
   app.signIn = async ({ email, password }) => {
-    const sanitizedEmail = sanitizeText(email).toLowerCase();
-    const sanitizedPassword = String(password || '').trim();
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanPassword = String(password || '').trim();
 
-    if (!sanitizedEmail || !sanitizedPassword) {
+    if (!cleanEmail || !cleanPassword) {
       throw new Error('Email et mot de passe requis.');
     }
 
-    if (supabaseClient) {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: sanitizedEmail,
-        password: sanitizedPassword
+    if (client) {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword
       });
 
       if (error) throw error;
@@ -121,36 +125,43 @@
     }
 
     const users = app.getUsers();
-    const user = users.find((entry) => entry.email.toLowerCase() === sanitizedEmail && entry.password === sanitizedPassword);
+    const user = users.find((entry) => entry.email.toLowerCase() === cleanEmail && entry.password === cleanPassword);
     if (!user) {
       throw new Error('Identifiants incorrects.');
     }
 
-    app.setCurrentUser({ id: user.id, email: user.email, username: user.username });
+    app.setCurrentUser({ id: user.id, username: user.username, email: user.email });
     return user;
   };
 
   app.signOut = async () => {
-    if (supabaseClient) {
-      await supabaseClient.auth.signOut();
+    if (client) {
+      await client.auth.signOut();
     }
     app.setCurrentUser(null);
   };
 
   app.getPosts = async () => {
-    if (supabaseClient) {
-      const { data, error } = await supabaseClient.from('posts').select('id, content, created_at, profiles(username)').order('created_at', { ascending: false });
+    if (client) {
+      const { data, error } = await client
+        .from('posts')
+        .select('id, content, created_at, profiles(username)')
+        .order('created_at', { ascending: false });
+
       if (!error && data) {
         return data.map((post) => ({
           id: post.id,
           author: post.profiles?.username || 'Utilisateur',
           content: post.content,
-          time: new Date(post.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+          time: new Date(post.created_at).toLocaleString('fr-FR', {
+            dateStyle: 'short',
+            timeStyle: 'short'
+          })
         }));
       }
     }
 
-    return fallbackStorage.get('freshnet-demo-posts', [
+    return storage.get('freshnet-demo-posts', [
       {
         id: 'welcome-post',
         author: 'Freshnet',
@@ -161,19 +172,20 @@
   };
 
   app.createPost = async (content) => {
-    const cleaned = sanitizeText(content).slice(0, 500);
-    if (!cleaned) {
+    const cleanContent = String(content || '').replace(/[<>]/g, '').trim().slice(0, 500);
+
+    if (!cleanContent) {
       throw new Error('Votre message est vide.');
     }
 
-    if (supabaseClient) {
-      const { data: { user } } = await supabaseClient.auth.getUser();
+    if (client) {
+      const { data: { user } } = await client.auth.getUser();
       if (!user) {
         throw new Error('Vous devez être connecté pour publier.');
       }
 
-      const { error } = await supabaseClient.from('posts').insert({
-        content: cleaned,
+      const { error } = await client.from('posts').insert({
+        content: cleanContent,
         user_id: user.id
       });
 
@@ -181,14 +193,14 @@
       return true;
     }
 
-    const posts = fallbackStorage.get('freshnet-demo-posts', []);
+    const posts = storage.get('freshnet-demo-posts', []);
     posts.push({
       id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
       author: 'Moi',
-      content: cleaned,
+      content: cleanContent,
       time: 'À l\'instant'
     });
-    fallbackStorage.set('freshnet-demo-posts', posts);
+    storage.set('freshnet-demo-posts', posts);
     return true;
   };
 

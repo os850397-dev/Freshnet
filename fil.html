@@ -3,59 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Freshnet — Connecter le monde, rapprocher les personnes.">
   <meta name="theme-color" content="#111111">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Freshnet — Connexion</title>
+  <title>Freshnet — Fil d'actualité</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/app.css">
 </head>
-<body class="auth-page">
-  <main class="auth-card">
-    <a class="brand" href="index.html"><span class="brand-mark">F</span>Fresh<span>net</span></a>
-
-    <div class="tabs" role="tablist">
-      <button class="tab active" id="tabLogin" role="tab" type="button">Connexion</button>
-      <button class="tab" id="tabSignup" role="tab" type="button">Créer un compte</button>
+<body>
+  <header class="topbar">
+    <a class="brand" href="fil.html"><span class="brand-mark">F</span>Fresh<span>net</span></a>
+    <div class="user-box">
+      <span id="whoami"></span>
+      <button class="ghost-button" id="logoutButton" type="button">Déconnexion</button>
     </div>
+  </header>
 
-    <form id="loginForm">
-      <label>Email
-        <input type="email" id="loginEmail" required autocomplete="email">
-      </label>
-      <label>Mot de passe
-        <input type="password" id="loginPassword" required autocomplete="current-password">
-      </label>
-      <button class="gold-button" type="submit">Se connecter</button>
+  <main class="feed">
+    <form id="postForm" class="composer">
+      <textarea id="postContent" maxlength="500" rows="3" placeholder="Quoi de neuf ?" required></textarea>
+      <div class="composer-bar">
+        <small id="counter">0 / 500</small>
+        <button class="gold-button" type="submit">Publier</button>
+      </div>
     </form>
 
-    <form id="signupForm" hidden>
-      <label>Nom d'utilisateur
-        <input type="text" id="signupUsername" required minlength="3" maxlength="24" autocomplete="username">
-      </label>
-      <label>Email
-        <input type="email" id="signupEmail" required autocomplete="email">
-      </label>
-      <label>Mot de passe (6 caractères minimum)
-        <input type="password" id="signupPassword" required minlength="6" autocomplete="new-password">
-      </label>
-      <button class="gold-button" type="submit">Créer mon compte</button>
-    </form>
-
-    <p id="message" class="message" role="status"></p>
+    <p id="feedMessage" class="message" role="status"></p>
+    <section id="posts" aria-label="Publications"></section>
   </main>
 
   <script>
     window.FreshnetConfig = {
-      supabaseUrl: 'https://YOUR-PROJECT.supabase.co',
-      supabaseKey: 'YOUR-ANON-KEY'
+      supabaseUrl: 'https://klkcjtqqodeicqbgxfaa.supabase.co',
+      supabaseKey: 'sb_publishable_32Njy0xIgW5-gKmIwRG96w_KsJF9BW9'
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/auth.js"></script>
+  <script src="js/feed.js"></script>
 </body>
 </html>
