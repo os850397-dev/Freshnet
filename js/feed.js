@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const tabLogin = document.getElementById('tabLogin');
   const tabSignup = document.getElementById('tabSignup');
   const loginForm = document.getElementById('loginForm');
@@ -30,58 +30,56 @@ document.addEventListener('DOMContentLoaded', () => {
   tabLogin?.addEventListener('click', showLogin);
   tabSignup?.addEventListener('click', showSignup);
 
-  loginForm?.addEventListener('submit', (event) => {
+  const currentUser = await window.Freshnet.getCurrentUser();
+  if (currentUser && window.location.pathname.endsWith('connexion.html')) {
+    window.location.href = 'fil.html';
+    return;
+  }
+
+  loginForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
+
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
-    const users = window.Freshnet.getUsers();
-    const user = users.find((entry) => entry.email.toLowerCase() === email.toLowerCase() && entry.password === password);
 
-    if (!user) {
-      setMessage('Identifiants incorrects.', 'error');
-      return;
+    try {
+      const user = await window.Freshnet.signIn({ email, password });
+      if (!user) {
+        throw new Error('Connexion impossible.');
+      }
+
+      setMessage('Connexion réussie ! Redirection...', 'success');
+      setTimeout(() => {
+        window.location.href = 'fil.html';
+      }, 250);
+    } catch (error) {
+      setMessage(error.message || 'Une erreur est survenue pendant la connexion.', 'error');
     }
-
-    window.Freshnet.setCurrentUser({
-      username: user.username,
-      email: user.email
-    });
-
-    setMessage('Connexion réussie ! Redirection...', 'success');
-    setTimeout(() => {
-      window.location.href = 'fil.html';
-    }, 300);
   });
 
-  signupForm?.addEventListener('submit', (event) => {
+  signupForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
+
     const username = document.getElementById('signupUsername').value.trim();
     const email = document.getElementById('signupEmail').value.trim();
     const password = document.getElementById('signupPassword').value;
 
-    if (!username || !email || password.length < 6) {
-      setMessage('Complétez tous les champs correctement.', 'error');
-      return;
-    }
+    try {
+      const user = await window.Freshnet.signUp({ username, email, password });
+      if (!user) {
+        throw new Error('Impossible de créer le compte.');
+      }
 
-    const users = window.Freshnet.getUsers();
-    const exists = users.some((entry) => entry.email.toLowerCase() === email.toLowerCase());
-    if (exists) {
-      setMessage('Cette adresse e-mail est déjà utilisée.', 'error');
-      return;
+      setMessage('Compte créé avec succès ! Redirection...', 'success');
+      setTimeout(() => {
+        window.location.href = 'fil.html';
+      }, 250);
+    } catch (error) {
+      setMessage(error.message || 'Une erreur est survenue pendant la création du compte.', 'error');
     }
-
-    users.push({ username, email, password });
-    window.Freshnet.saveUsers(users);
-    window.Freshnet.setCurrentUser({ username, email });
-    setMessage('Compte créé avec succès ! Vous êtes connecté.', 'success');
-    setTimeout(() => {
-      window.location.href = 'fil.html';
-    }, 300);
   });
 
-  const currentUser = window.Freshnet.getCurrentUser();
-  if (currentUser) {
-    setMessage(`Bon retour, ${currentUser.username || currentUser.email}!`, 'success');
+  if (!window.Freshnet.isSupabaseReady()) {
+    setMessage('Mode démo actif : configure Supabase pour passer en production.', 'success');
   }
 });

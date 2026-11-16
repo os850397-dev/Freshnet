@@ -1,20 +1,13 @@
-# Freshnet
+import { CapacitorConfig } from '@capacitor/cli';
 
-Freshnet est un mini réseau social front-end pensé comme prototype PWA pour GitHub Pages.
+const config: CapacitorConfig = {
+  appId: 'com.freshnet.app',
+  appName: 'Freshnet',
+  webDir: '.',
+  bundledWebRuntime: false,
+  server: {
+    androidScheme: 'https'
+  }
+};
 
-## Pages
-- `index.html` : page d'accueil
-- `connexion.html` : formulaire login / inscription
-- `fil.html` : fil d'actualités local
-
-## Fonctionnement
-- Authentification locale via `localStorage`
-- Publications stockées localement
-- Manifest PWA + service worker pour un comportement d'application installable
-
-## Déploiement
-Le site est prêt pour un hébergement GitHub Pages.
-
-## Remarque
-Ceci est un prototype front-end sans backend distant.
-
+export default config;
