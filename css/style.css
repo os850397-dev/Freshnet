@@ -1,93 +1,37 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const currentUser = window.Freshnet.currentUser();
-  const whoami = document.getElementById('whoami');
-  const logoutButton = document.getElementById('logoutButton');
-  const postForm = document.getElementById('postForm');
-  const postContent = document.getElementById('postContent');
-  const counter = document.getElementById('counter');
-  const postsRoot = document.getElementById('posts');
-  const feedMessage = document.getElementById('feedMessage');
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111111">
+  <title>Freshnet — Fil d'actualité</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="fil.html"><span class="brand-mark">F</span>Fresh<span>net</span></a>
+    <div class="user-box">
+      <span id="whoami"></span>
+      <button class="ghost-button" id="logoutButton" type="button">Déconnexion</button>
+    </div>
+  </header>
 
-  const getPosts = () => window.Freshnet.storage.get('freshnet-posts', [
-    {
-      id: crypto.randomUUID(),
-      author: 'Freshnet',
-      content: 'Bienvenue sur Freshnet ! Partage tes idées et rejoins la communauté.',
-      time: 'À l\'instant'
-    }
-  ]);
+  <main class="feed">
+    <form id="postForm" class="composer">
+      <textarea id="postContent" maxlength="500" rows="3" placeholder="Quoi de neuf ?" required></textarea>
+      <div class="composer-bar">
+        <small id="counter">0 / 500</small>
+        <button class="gold-button" type="submit">Publier</button>
+      </div>
+    </form>
 
-  if (!currentUser) {
-    window.location.href = './connexion.html';
-    return;
-  }
+    <p id="feedMessage" class="message" role="status"></p>
+    <section id="posts" aria-label="Publications"></section>
+  </main>
 
-  if (whoami) {
-    whoami.textContent = currentUser.name || currentUser.email;
-  }
-
-  const renderPosts = () => {
-    const posts = getPosts();
-    if (!postsRoot) return;
-
-    postsRoot.innerHTML = posts.slice().reverse().map((post) => `
-      <article class="post-card">
-        <div class="post-head">
-          <div class="avatar-mini">${(post.author || 'F').charAt(0).toUpperCase()}</div>
-          <div>
-            <strong>${post.author || 'Utilisateur'}</strong>
-            <small>${post.time || 'À l\'instant'}</small>
-          </div>
-        </div>
-        <p>${post.content}</p>
-      </article>
-    `).join('');
-  };
-
-  if (counter && postContent) {
-    const updateCounter = () => {
-      counter.textContent = `${postContent.value.length} / 500`;
-    };
-    postContent.addEventListener('input', updateCounter);
-    updateCounter();
-  }
-
-  if (postForm && postContent) {
-    postForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const content = postContent.value.trim();
-      if (!content) {
-        if (feedMessage) {
-          feedMessage.textContent = 'Écris quelque chose avant de publier.';
-          feedMessage.classList.add('error');
-        }
-        return;
-      }
-
-      const posts = getPosts();
-      posts.push({
-        id: crypto.randomUUID(),
-        author: currentUser.name || 'Moi',
-        content,
-        time: 'À l\'instant'
-      });
-      window.Freshnet.storage.set('freshnet-posts', posts);
-      postContent.value = '';
-      renderPosts();
-      if (counter) counter.textContent = '0 / 500';
-      if (feedMessage) {
-        feedMessage.textContent = 'Publication ajoutée.';
-        feedMessage.classList.remove('error');
-      }
-    });
-  }
-
-  if (logoutButton) {
-    logoutButton.addEventListener('click', () => {
-      window.Freshnet.storage.set('freshnet-current-user', null);
-      window.location.href = './connexion.html';
-    });
-  }
-
-  renderPosts();
-});
+  <script src="js/config.js"></script>
+  <script src="js/feed.js"></script>
+</body>
+</html>

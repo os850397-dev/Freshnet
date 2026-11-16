@@ -65,9 +65,17 @@
   <footer id="connexion">© <span id="year"></span> Freshnet · Connecter le monde, rapprocher les personnes.</footer>
 
   <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-    document.getElementById('joinButton').addEventListener('click', () => window.location.href = 'connexion.html');
-    document.getElementById('startButton').addEventListener('click', () => window.location.href = 'connexion.html');
+    const yearEl = document.getElementById('year');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+    const goAuth = () => {
+      window.location.href = 'connexion.html';
+    };
+
+    const joinButton = document.getElementById('joinButton');
+    const startButton = document.getElementById('startButton');
+    if (joinButton) joinButton.addEventListener('click', goAuth);
+    if (startButton) startButton.addEventListener('click', goAuth);
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

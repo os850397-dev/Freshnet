@@ -1,82 +1,38 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const tabLogin = document.getElementById('tabLogin');
-  const tabSignup = document.getElementById('tabSignup');
-  const loginForm = document.getElementById('loginForm');
-  const signupForm = document.getElementById('signupForm');
-  const messageEl = document.getElementById('message');
+(function () {
+  const Freshnet = window.Freshnet || {};
 
-  const setMessage = (text, type = 'success') => {
-    if (!messageEl) return;
-    messageEl.textContent = text;
-    messageEl.className = `message ${type}`;
+  const storage = {
+    get(key, fallback) {
+      try {
+        const value = localStorage.getItem(key);
+        return value !== null ? JSON.parse(value) : fallback;
+      } catch {
+        return fallback;
+      }
+    },
+    set(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // ignore storage errors in restricted browsers
+      }
+    }
   };
 
-  const showLogin = () => {
-    tabLogin?.classList.add('active');
-    tabSignup?.classList.remove('active');
-    loginForm.hidden = false;
-    signupForm.hidden = true;
-  };
-
-  const showSignup = () => {
-    tabSignup?.classList.add('active');
-    tabLogin?.classList.remove('active');
-    signupForm.hidden = false;
-    loginForm.hidden = true;
-  };
-
-  tabLogin?.addEventListener('click', showLogin);
-  tabSignup?.addEventListener('click', showSignup);
-
-  loginForm?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const users = window.getFreshnetUsers();
-    const user = users.find((entry) => entry.email.toLowerCase() === email.toLowerCase() && entry.password === password);
-
-    if (!user) {
-      setMessage('Identifiants incorrects.', 'error');
-      return;
+  Freshnet.storage = storage;
+  Freshnet.getUsers = () => Freshnet.storage.get('freshnet-users', []);
+  Freshnet.saveUsers = (users) => Freshnet.storage.set('freshnet-users', users);
+  Freshnet.getCurrentUser = () => Freshnet.storage.get('freshnet-current-user', null);
+  Freshnet.setCurrentUser = (user) => Freshnet.storage.set('freshnet-current-user', user);
+  Freshnet.getPosts = () => Freshnet.storage.get('freshnet-posts', [
+    {
+      id: crypto.randomUUID ? crypto.randomUUID() : 'welcome-post',
+      author: 'Freshnet',
+      content: 'Bienvenue sur Freshnet ! Partage tes idées et rejoins la communauté.',
+      time: 'À l\'instant'
     }
+  ]);
+  Freshnet.savePosts = (posts) => Freshnet.storage.set('freshnet-posts', posts);
 
-    window.setCurrentFreshnetUser({ username: user.username, email: user.email });
-    setMessage('Connexion réussie ! Redirection...', 'success');
-    setTimeout(() => {
-      window.location.href = 'fil.html';
-    }, 500);
-  });
-
-  signupForm?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const username = document.getElementById('signupUsername').value.trim();
-    const email = document.getElementById('signupEmail').value.trim();
-    const password = document.getElementById('signupPassword').value;
-
-    if (!username || !email || password.length < 6) {
-      setMessage('Complétez tous les champs correctement.', 'error');
-      return;
-    }
-
-    const users = window.getFreshnetUsers();
-    const exists = users.some((entry) => entry.email.toLowerCase() === email.toLowerCase());
-
-    if (exists) {
-      setMessage('Cette adresse e-mail est déjà utilisée.', 'error');
-      return;
-    }
-
-    users.push({ username, email, password });
-    window.saveFreshnetUsers(users);
-    window.setCurrentFreshnetUser({ username, email });
-    setMessage('Compte créé avec succès ! Vous êtes connecté.', 'success');
-    setTimeout(() => {
-      window.location.href = 'fil.html';
-    }, 500);
-  });
-
-  const currentUser = window.getCurrentFreshnetUser();
-  if (currentUser) {
-    setMessage(`Bon retour, ${currentUser.username} !`, 'success');
-  }
-});
+  window.Freshnet = Freshnet;
+})();
