@@ -1,37 +1,409 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#111111">
-  <title>Freshnet — Fil d'actualité</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/app.css">
-</head>
-<body>
-  <header class="topbar">
-    <a class="brand" href="fil.html"><span class="brand-mark">F</span>Fresh<span>net</span></a>
-    <div class="user-box">
-      <span id="whoami"></span>
-      <button class="ghost-button" id="logoutButton" type="button">Déconnexion</button>
-    </div>
-  </header>
+:root {
+  --gold: #d6a93b;
+  --gold-light: #f4d783;
+  --black: #111111;
+  --ink: #202020;
+  --muted: #77716a;
+  --paper: #fbfaf7;
+  --card: #ffffff;
+  --line: #e9e3d4;
+  --danger: #b3261e;
+  --success: #1d7a45;
+}
 
-  <main class="feed">
-    <form id="postForm" class="composer">
-      <textarea id="postContent" maxlength="500" rows="3" placeholder="Quoi de neuf ?" required></textarea>
-      <div class="composer-bar">
-        <small id="counter">0 / 500</small>
-        <button class="gold-button" type="submit">Publier</button>
-      </div>
-    </form>
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
 
-    <p id="feedMessage" class="message" role="status"></p>
-    <section id="posts" aria-label="Publications"></section>
-  </main>
+a { color: inherit; }
 
-  <script src="js/config.js"></script>
-  <script src="js/feed.js"></script>
-</body>
-</html>
+.topbar {
+  min-height: 76px;
+  padding: 14px 6%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: #111;
+  color: white;
+  border-bottom: 1px solid rgba(214, 169, 59, 0.35);
+}
+
+.brand, .mini-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: white;
+  text-decoration: none;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -.8px;
+}
+
+.brand > span:last-child { color: var(--gold-light); }
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  color: var(--gold-light);
+  font-weight: 900;
+}
+
+nav { display: flex; gap: 25px; }
+nav a { color: #ddd; text-decoration: none; font-size: 14px; }
+nav a:hover, nav a.active { color: var(--gold-light); }
+
+.gold-button,
+.ghost-button,
+.tab {
+  border: 0;
+  border-radius: 8px;
+  padding: 13px 19px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.gold-button {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: #17130a;
+}
+
+.ghost-button {
+  background: transparent;
+  color: #f7f1de;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.gold-button:hover,
+.ghost-button:hover,
+.tab:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 82px 6% 70px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 55px;
+}
+
+.eyebrow {
+  color: #9b741e;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+h1 {
+  max-width: 570px;
+  margin: 14px 0;
+  font-size: clamp(38px, 5vw, 62px);
+  line-height: 1.05;
+  letter-spacing: -2px;
+}
+
+h1 span { color: #b88925; }
+
+.intro {
+  max-width: 500px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+
+.text-link {
+  color: #7e5c13;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.note {
+  margin-top: 28px;
+  color: #8b857b;
+  font-size: 13px;
+}
+
+.preview {
+  padding: 22px;
+  background: #171717;
+  border: 1px solid #3a301c;
+  border-radius: 18px;
+  box-shadow: 0 22px 55px rgba(0,0,0,.16);
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.mini-brand {
+  font-size: 18px;
+  color: white;
+}
+
+.mini-brand .brand-mark {
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+}
+
+.online-dot {
+  color: #e8c66f;
+  font-size: 12px;
+}
+
+.post {
+  display: flex;
+  gap: 13px;
+  padding: 18px;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: #242424;
+  color: #f5f2eb;
+}
+
+.avatar {
+  flex: 0 0 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #b88925;
+  color: #17130a;
+  font-weight: 800;
+}
+
+.avatar-two { background: #3d3421; color: #f4d783; }
+
+.post-content { min-width: 0; }
+.post-content strong { display: block; font-size: 14px; }
+.post-content small {
+  display: block;
+  margin-top: 5px;
+  color: #aaa39a;
+  font-size: 11px;
+}
+.post-content p {
+  color: #d4cec4;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.post-actions {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  color: #e4c36e;
+  font-size: 11px;
+}
+
+footer {
+  padding: 22px 6%;
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+  border-top: 1px solid #e8e1d3;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 30px 16px;
+  background: linear-gradient(180deg, #1b1b1b 0%, #f8f4eb 45%, #f8f4eb 100%);
+}
+
+.auth-card {
+  width: min(100%, 440px);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 18px 42px rgba(0,0,0,.12);
+  padding: 28px 22px 24px;
+}
+
+.auth-card .brand {
+  color: var(--black);
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: #f0eadc;
+  border-radius: 10px;
+  padding: 6px;
+  margin-bottom: 18px;
+}
+
+.tab {
+  background: transparent;
+  color: var(--ink);
+  border-radius: 8px;
+}
+
+.tab.active {
+  background: #121212;
+  color: white;
+}
+
+#loginForm,
+#signupForm {
+  display: grid;
+  gap: 14px;
+}
+
+#loginForm label,
+#signupForm label {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #d7cab0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font: inherit;
+  background: white;
+  color: var(--ink);
+}
+
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+button[type="submit"] {
+  margin-top: 6px;
+}
+
+.message {
+  min-height: 20px;
+  margin-top: 18px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.message.success { color: var(--success); }
+.message.error { color: var(--danger); }
+
+.feed {
+  max-width: 760px;
+  margin: 32px auto 0;
+  padding: 0 16px 40px;
+}
+
+.composer {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 22px rgba(0,0,0,.04);
+}
+
+.composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.user-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+}
+
+#whoami {
+  font-weight: 700;
+}
+
+#posts {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.post-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 16px;
+}
+
+.post-card .author {
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.post-card .meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.post-card .content {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    flex-wrap: wrap;
+    padding: 14px 5%;
+  }
+
+  nav {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .topbar > .gold-button {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 55px 5%;
+    gap: 35px;
+  }
+
+  h1 { letter-spacing: -1px; }
+  .intro { font-size: 16px; }
+  .preview { padding: 14px; }
+}
