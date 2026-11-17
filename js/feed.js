@@ -1,78 +1,117 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  const loginTab = document.getElementById('tabLogin');
-  const signupTab = document.getElementById('tabSignup');
-  const loginForm = document.getElementById('loginForm');
-  const signupForm = document.getElementById('signupForm');
-  const message = document.getElementById('message');
+  const postsEl = document.getElementById('posts');
+  if (!postsEl) return;
+
+  const whoami = document.getElementById('whoami');
+  const logoutButton = document.getElementById('logoutButton');
+  const form = document.getElementById('postForm');
+  const contentInput = document.getElementById('postContent');
+  const counter = document.getElementById('counter');
+  const message = document.getElementById('feedMessage');
+  const publishButton = document.getElementById('publishButton');
+
   const setMessage = (text, type = '') => {
     if (!message) return;
     message.textContent = text;
     message.className = `message ${type}`.trim();
   };
 
-  const selectTab = (showSignup) => {
-    if (loginForm) loginForm.hidden = showSignup;
-    if (signupForm) signupForm.hidden = !showSignup;
-    loginTab?.classList.toggle('active', !showSignup);
-    signupTab?.classList.toggle('active', showSignup);
-    loginTab?.setAttribute('aria-selected', String(!showSignup));
-    signupTab?.setAttribute('aria-selected', String(showSignup));
-    setMessage('');
+  const formatDate = (date) => {
+    if (!date) return '';
+    const parsed = new Date(date);
+    return Number.isNaN(parsed.getTime()) ? '' : parsed.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
   };
-  loginTab?.addEventListener('click', () => selectTab(false));
-  signupTab?.addEventListener('click', () => selectTab(true));
 
-  if (!window.Freshnet?.isSupabaseReady()) {
-    setMessage('La configuration Supabase est manquante. Vérifie js/config.js.', 'error');
-    return;
-  }
-  try {
-    if (await window.Freshnet.getCurrentUser()) {
-      window.location.replace('fil.html');
+  const renderPosts = (posts) => {
+    postsEl.replaceChildren();
+    if (!posts.length) {
+      const empty = document.createElement('p');
+      empty.className = 'message';
+      empty.textContent = 'Aucune publication pour le moment. Lance la conversation !';
+      postsEl.append(empty);
       return;
     }
-  } catch (error) {
-    setMessage(error.message || 'Impossible de vérifier la session.', 'error');
+    for (const post of posts) {
+      const card = document.createElement('article');
+      card.className = 'post-card';
+      const author = document.createElement('div');
+      author.className = 'author';
+      author.textContent = post.author || 'Utilisateur';
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = formatDate(post.createdAt);
+      const body = document.createElement('p');
+      body.className = 'content';
+      body.textContent = post.content || '';
+      card.append(author, meta, body);
+      postsEl.append(card);
+    }
+  };
+
+  if (!window.Freshnet?.isSupabaseReady()) {
+    setMessage('La configuration Supabase est indisponible. Vérifie js/config.js et recharge la page.', 'error');
+    if (form) form.hidden = true;
+    return;
   }
 
-  loginForm?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const button = loginForm.querySelector('button[type="submit"]');
-    if (button) button.disabled = true;
-    setMessage('Connexion en cours…');
+  try {
+    const user = await window.Freshnet.getCurrentUser();
+    if (!user) {
+      window.location.replace('connexion.html');
+      return;
+    }
+    if (whoami) whoami.textContent = `Bonjour, ${user.username}`;
+  } catch {
+    window.location.replace('connexion.html');
+    return;
+  }
+
+  const refresh = async () => {
+    setMessage('Chargement du fil…');
     try {
-      await window.Freshnet.signIn({
-        email: document.getElementById('loginEmail').value,
-        password: document.getElementById('loginPassword').value
-      });
-      window.location.replace('fil.html');
+      renderPosts(await window.Freshnet.getPosts());
+      setMessage('');
     } catch (error) {
-      setMessage(error.message || 'La connexion a échoué.', 'error');
-      if (button) button.disabled = false;
+      setMessage(error.message || 'Impossible de charger le fil. Vérifie les tables et les règles RLS Supabase.', 'error');
+    }
+  };
+
+  contentInput?.addEventListener('input', () => {
+    if (counter) counter.textContent = `${contentInput.value.length} / 500`;
+  });
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const content = contentInput?.value.trim() || '';
+    if (!content) {
+      setMessage('Écris un message avant de publier.', 'error');
+      return;
+    }
+    if (publishButton) publishButton.disabled = true;
+    setMessage('Publication en cours…');
+    try {
+      await window.Freshnet.createPost(content);
+      form.reset();
+      if (counter) counter.textContent = '0 / 500';
+      await refresh();
+      setMessage('Publication envoyée.', 'success');
+    } catch (error) {
+      setMessage(error.message || 'Impossible de publier.', 'error');
+    } finally {
+      if (publishButton) publishButton.disabled = false;
     }
   });
 
-  signupForm?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const button = signupForm.querySelector('button[type="submit"]');
-    if (button) button.disabled = true;
-    setMessage('Création du compte…');
+  logoutButton?.addEventListener('click', async () => {
+    logoutButton.disabled = true;
     try {
-      const result = await window.Freshnet.signUp({
-        username: document.getElementById('signupUsername').value,
-        email: document.getElementById('signupEmail').value,
-        password: document.getElementById('signupPassword').value
-      });
-      if (result.session) {
-        window.location.replace('fil.html');
-        return;
-      }
-      selectTab(false);
-      setMessage('Compte créé. Confirme ton adresse email, puis connecte-toi.', 'success');
+      await window.Freshnet.signOut();
+      window.location.replace('connexion.html');
     } catch (error) {
-      setMessage(error.message || 'La création du compte a échoué.', 'error');
-    } finally {
-      if (button) button.disabled = false;
+      setMessage(error.message || 'La déconnexion a échoué.', 'error');
+      logoutButton.disabled = false;
     }
   });
+
+  await refresh();
 });

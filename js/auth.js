@@ -10,12 +10,9 @@
     : null;
 
   const requireClient = () => {
-    if (!client) {
-      throw new Error('Supabase n’est pas configuré. Vérifie js/config.js et le schéma SQL.');
-    }
+    if (!client) throw new Error('Supabase ne répond pas ou n’est pas configuré. Vérifie js/config.js et ta connexion.');
     return client;
   };
-
   const normalizeUser = (user) => user ? ({
     id: user.id,
     email: user.email || '',

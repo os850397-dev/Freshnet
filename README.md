@@ -2,36 +2,39 @@
 
 Freshnet est une application sociale légère construite en HTML, CSS et JavaScript. Elle fonctionne comme site statique/PWA et peut être empaquetée en application Android avec Capacitor.
 
-## Prérequis
-- Node.js 18 ou plus récent
-- Un projet Supabase avec Auth activé
-
 ## Lancer le site
 ```bash
 npm install
 npm run dev
 ```
-Puis ouvre http://localhost:8080.
+Ouvre ensuite http://localhost:8080.
 
-## Configurer Supabase
-`js/config.js` contient l'URL du projet et une clé publishable/anon, qui est faite pour être utilisée dans le navigateur. Ne place jamais une clé `service_role` dans ce dépôt. Si tu remplaces le projet, modifie ces deux valeurs.
+## Supabase
+Le projet est configuré avec l'URL et la clé publishable du projet Supabase Freshnet dans `js/config.js`. Cette clé est destinée au navigateur; ne la remplace jamais par une clé `service_role`. Dans Supabase, active Auth par email et exécute `supabase/schema.sql` dans le SQL Editor. Si la confirmation par email est active, l'utilisateur doit confirmer son adresse avant la connexion.
 
-Dans Supabase, exécute `supabase/schema.sql` dans le SQL Editor. La création de compte peut nécessiter la confirmation email suivant les réglages Auth du projet.
+Le SQL configure les tables `profiles` et `posts`, le lien entre elles, le trigger de profil et les politiques RLS. L'exécuter dans le SQL Editor est une action nécessaire dans le tableau de bord Supabase, distincte du déploiement GitHub.
 
-## Créer l'application Android
+## PWA
+Publie sur un hébergement HTTPS. Le service worker met en cache les ressources de l'interface uniquement; les appels Supabase nécessitent une connexion.
+
+## Application Android (Capacitor)
+Prérequis: Node.js 18+, Android Studio et le SDK Android.
 ```bash
 npm install
 npm run build
-npm run cap:add:android   # une seule fois
+npm run cap:add:android   # une seule fois pour créer android/
 npm run cap:sync
 npm run cap:open:android
 ```
-Android Studio et un SDK Android sont nécessaires pour générer/signature l'APK. Pour une nouvelle plateforme iOS, utilise `npx cap add ios` sur macOS avec Xcode.
+Dans Android Studio, génère et signe l'APK/AAB via Build > Generate Signed Bundle / APK. Ce dépôt fournit la configuration et le bundle web; la compilation/signature Android s'effectue sur ta machine avec Android Studio.
 
-## Déploiement PWA
-Publie les fichiers du dépôt sur un hébergement HTTPS statique (par exemple GitHub Pages). Le service worker met en cache l'interface, pas les réponses d'authentification ni les données Supabase.
-
-## Fonctionnalités
-- inscription et connexion Supabase Auth
-- création et lecture des publications, protégées par RLS
-- mode installable PWA et génération du bundle web Capacitor
+## Structure
+- `index.html`: accueil
+- `connexion.html`: connexion et inscription
+- `fil.html`: fil d'actualité
+- `js/auth.js`: client Supabase et API auth/feed
+- `js/auth-page.js`: formulaires d'authentification
+- `js/feed.js`: fil, publication et déconnexion
+- `service-worker.js` et `manifest.webmanifest`: PWA
+- `capacitor.config.ts`: configuration mobile
+- `supabase/schema.sql`: schéma et politiques RLS

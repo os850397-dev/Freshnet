@@ -1,17 +1,9 @@
-const CACHE_NAME = 'freshnet-shell-v2';
+const CACHE_NAME = 'freshnet-shell-v3';
 const APP_SHELL = [
-  './',
-  './index.html',
-  './connexion.html',
-  './fil.html',
-  './css/style.css',
-  './css/app.css',
-  './js/app.js',
-  './js/config.js',
-  './js/auth.js',
-  './js/feed.js',
-  './manifest.webmanifest',
-  './icons/icon.svg'
+  './', './index.html', './connexion.html', './fil.html',
+  './css/style.css', './css/app.css', './js/app.js', './js/config.js',
+  './js/auth.js', './js/auth-page.js', './js/feed.js',
+  './manifest.webmanifest', './icons/icon.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -30,21 +22,15 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
-
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).then((response) => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
       return response;
     }).catch(() => caches.match(request).then((cached) => cached || caches.match('./index.html'))));
     return;
   }
-
   event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-    if (response.ok) {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-    }
+    if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
     return response;
   })));
 });
