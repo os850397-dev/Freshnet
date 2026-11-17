@@ -4,12 +4,12 @@
   "private": true,
   "description": "Freshnet social PWA and Capacitor app",
   "scripts": {
-    "dev": "npx serve . -l 8080",
+    "dev": "serve . -l 8080",
     "build": "node scripts/build.mjs",
-    "cap:add:android": "npx cap add android",
-    "cap:sync": "npm run build && npx cap sync android",
-    "cap:open:android": "npx cap open android",
-    "cap:run:android": "npx cap run android"
+    "cap:add:android": "cap add android",
+    "cap:sync": "npm run build && cap sync android",
+    "cap:open:android": "cap open android",
+    "cap:run:android": "cap run android"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",
