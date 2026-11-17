@@ -7,10 +7,11 @@
   <meta name="theme-color" content="#111111">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Freshnet — Fil d'actualité</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/app.css">
-  <title>Freshnet — Fil d'actualité</title>
 </head>
 <body>
   <header class="topbar">
@@ -32,9 +33,16 @@
     <p id="feedMessage" class="message" role="status" aria-live="polite"></p>
     <section id="posts" aria-label="Publications"></section>
   </main>
+
+  <script>
+    window.FreshnetConfig = {
+      supabaseUrl: 'https://klkcjtqqodeicqbgxfaa.supabase.co',
+      supabaseKey: 'sb_publishable_32Njy0xIgW5-gKmIwRG96w_KsJF9BW9'
+    };
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
-  <script src="js/feed.js"></script>
+  <script src="js/auth-page.js"></script>
 </body>
 </html>
