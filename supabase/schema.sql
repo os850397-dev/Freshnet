@@ -1,32 +1,90 @@
-# Freshnet
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  username text not null unique check (char_length(username) between 3 and 24),
+  avatar_url text,
+  created_at timestamptz not null default now()
+);
 
-Freshnet est un mini réseau social front-end pensé comme prototype PWA et comme base de projet pour un usage plus sécurisé avec Supabase.
+create table if not exists public.posts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  content text not null check (char_length(btrim(content)) between 1 and 500),
+  created_at timestamptz not null default now(),
+  constraint posts_user_id_fkey foreign key (user_id) references public.profiles(id) on delete cascade
+);
 
-## Sécurité
-Ce projet a été mis à jour pour utiliser Supabase Auth et un modèle de données sécurisé, avec l’objectif d’éliminer la dépendance au stockage local des mots de passe dans le navigateur.
+create index if not exists posts_created_at_idx on public.posts (created_at desc);
+create index if not exists posts_user_id_idx on public.posts (user_id);
 
-## Configuration Supabase
-1. Crée un projet Supabase.
-2. Dans le tableau de bord, récupère l’URL du projet et la clé anon.
-3. Remplace les valeurs suivantes dans `connexion.html` et `fil.html` :
-   - `https://YOUR-PROJECT.supabase.co`
-   - `YOUR-ANON-KEY`
-4. Exécute les scripts SQL dans `supabase/schema.sql`.
+alter table public.profiles enable row level security;
+alter table public.posts enable row level security;
 
-## Scripts SQL
-Voir le fichier `supabase/schema.sql` pour :
-- `profiles`
-- `posts`
-- politiques RLS
-- index de performance
+drop policy if exists "Profiles visible to authenticated users" on public.profiles;
+create policy "Profiles visible to authenticated users"
+  on public.profiles for select to authenticated
+  using (true);
 
-## Bonnes pratiques de production
-- ne jamais stocker les mots de passe côté client
-- utiliser Supabase Auth
-- utiliser les politiques RLS de Supabase
-- filtrer et neutraliser les entrées utilisateur
-- utiliser HTTPS uniquement
-- ne jamais exposer de clé secrète dans un frontend public
+drop policy if exists "Users can insert their own profile" on public.profiles;
+create policy "Users can insert their own profile"
+  on public.profiles for insert to authenticated
+  with check (auth.uid() = id);
 
-## Déploiement
-Le site est prêt pour GitHub Pages, et il est compatible avec une conversion en application Android via Capacitor.
+drop policy if exists "Users can update their own profile" on public.profiles;
+create policy "Users can update their own profile"
+  on public.profiles for update to authenticated
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+drop policy if exists "Posts visible to authenticated users" on public.posts;
+create policy "Posts visible to authenticated users"
+  on public.posts for select to authenticated
+  using (true);
+
+drop policy if exists "Users can insert their own posts" on public.posts;
+create policy "Users can insert their own posts"
+  on public.posts for insert to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own posts" on public.posts;
+create policy "Users can update their own posts"
+  on public.posts for update to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete their own posts" on public.posts;
+create policy "Users can delete their own posts"
+  on public.posts for delete to authenticated
+  using (auth.uid() = user_id);
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  desired_username text;
+  safe_username text;
+begin
+  desired_username := nullif(btrim(new.raw_user_meta_data ->> 'username'), '');
+  if desired_username is null then
+    desired_username := split_part(coalesce(new.email, 'user'), '@', 1);
+  end if;
+  safe_username := left(regexp_replace(desired_username, '[^a-zA-Z0-9_.-]', '', 'g'), 24);
+  if char_length(safe_username) < 3 then
+    safe_username := 'user_' || left(replace(new.id::text, '-', ''), 12);
+  end if;
+
+  insert into public.profiles (id, username)
+  values (new.id, safe_username)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+revoke all on function public.handle_new_user() from public;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();

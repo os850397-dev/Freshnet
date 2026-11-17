@@ -1,208 +1,86 @@
 (function () {
-  const app = window.Freshnet || {};
+  const config = window.FreshnetConfig || {};
+  const url = typeof config.supabaseUrl === 'string' ? config.supabaseUrl.trim() : '';
+  const key = typeof config.supabaseKey === 'string' ? config.supabaseKey.trim() : '';
+  const isConfigured = url.startsWith('https://') && key.length > 20 && !url.includes('YOUR-') && !key.includes('YOUR-');
+  const client = isConfigured && window.supabase?.createClient
+    ? window.supabase.createClient(url, key, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      })
+    : null;
 
-  const storage = {
-    get(key, fallback) {
-      try {
-        const value = localStorage.getItem(key);
-        return value !== null ? JSON.parse(value) : fallback;
-      } catch {
-        return fallback;
-      }
+  const requireClient = () => {
+    if (!client) {
+      throw new Error('Supabase n’est pas configuré. Vérifie js/config.js et le schéma SQL.');
+    }
+    return client;
+  };
+
+  const normalizeUser = (user) => user ? ({
+    id: user.id,
+    email: user.email || '',
+    username: user.user_metadata?.username || (user.email ? user.email.split('@')[0] : 'Utilisateur')
+  }) : null;
+
+  window.Freshnet = {
+    getSupabaseClient: () => client,
+    isSupabaseReady: () => Boolean(client),
+    async getCurrentUser() {
+      if (!client) return null;
+      const { data, error } = await client.auth.getUser();
+      if (error) return null;
+      return normalizeUser(data.user);
     },
-    set(key, value) {
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
-      } catch {
+    async signUp({ email, password, username }) {
+      const cleanEmail = String(email || '').trim().toLowerCase();
+      const cleanUsername = String(username || '').trim();
+      const cleanPassword = String(password || '');
+      if (!cleanEmail || cleanUsername.length < 3 || cleanUsername.length > 24 || cleanPassword.length < 6) {
+        throw new Error('Vérifie ton email, ton nom (3 à 24 caractères) et ton mot de passe (6 caractères minimum).');
       }
-    },
-    remove(key) {
-      try {
-        localStorage.removeItem(key);
-      } catch {
-      }
-    }
-  };
-
-  const readConfigValue = (value) => (typeof value === 'string' ? value.trim() : '');
-  const supabaseUrl = readConfigValue(window.FreshnetConfig?.supabaseUrl || window.SUPABASE_URL || '');
-  const supabaseKey = readConfigValue(window.FreshnetConfig?.supabaseKey || window.SUPABASE_ANON_KEY || '');
-
-  const client =
-    typeof window !== 'undefined' &&
-    window.supabase &&
-    supabaseUrl &&
-    supabaseKey &&
-    !supabaseUrl.includes('YOUR-') &&
-    !supabaseKey.includes('YOUR-')
-      ? window.supabase.createClient(supabaseUrl, supabaseKey)
-      : null;
-
-  app.getSupabaseClient = () => client;
-  app.isSupabaseReady = () => Boolean(client);
-
-  app.getUsers = () => storage.get('freshnet-users', []);
-  app.saveUsers = (users) => storage.set('freshnet-users', users);
-
-  app.getCurrentUser = async () => {
-    if (client) {
-      const { data: { user }, error } = await client.auth.getUser();
-      if (!error && user) {
-        return {
-          id: user.id,
-          email: user.email,
-          username: user.user_metadata?.username || user.email.split('@')[0]
-        };
-      }
-      return null;
-    }
-
-    return storage.get('freshnet-demo-user', null);
-  };
-
-  app.setCurrentUser = (user) => {
-    if (user) {
-      storage.set('freshnet-demo-user', user);
-    } else {
-      storage.remove('freshnet-demo-user');
-    }
-  };
-
-  app.signUp = async ({ email, password, username }) => {
-    const cleanEmail = String(email || '').trim().toLowerCase();
-    const cleanPassword = String(password || '').trim();
-    const cleanUsername = String(username || '').trim().slice(0, 24);
-
-    if (!cleanEmail || !cleanPassword || cleanPassword.length < 6 || !cleanUsername) {
-      throw new Error('Email, nom d’utilisateur et mot de passe sont requis.');
-    }
-
-    if (client) {
-      const { data, error } = await client.auth.signUp({
+      const { data, error } = await requireClient().auth.signUp({
         email: cleanEmail,
         password: cleanPassword,
         options: { data: { username: cleanUsername } }
       });
-
       if (error) throw error;
-      return data?.user ?? null;
-    }
-
-    const users = app.getUsers();
-    if (users.some((user) => user.email.toLowerCase() === cleanEmail)) {
-      throw new Error('Cette adresse e-mail est déjà utilisée.');
-    }
-
-    const user = {
-      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-      username: cleanUsername,
-      email: cleanEmail,
-      password: cleanPassword
-    };
-
-    users.push(user);
-    app.saveUsers(users);
-    app.setCurrentUser({ id: user.id, username: user.username, email: user.email });
-    return user;
-  };
-
-  app.signIn = async ({ email, password }) => {
-    const cleanEmail = String(email || '').trim().toLowerCase();
-    const cleanPassword = String(password || '').trim();
-
-    if (!cleanEmail || !cleanPassword) {
-      throw new Error('Email et mot de passe requis.');
-    }
-
-    if (client) {
-      const { data, error } = await client.auth.signInWithPassword({
-        email: cleanEmail,
-        password: cleanPassword
-      });
-
+      return { user: normalizeUser(data.user), session: data.session };
+    },
+    async signIn({ email, password }) {
+      const cleanEmail = String(email || '').trim().toLowerCase();
+      if (!cleanEmail || !password) throw new Error('Email et mot de passe requis.');
+      const { data, error } = await requireClient().auth.signInWithPassword({ email: cleanEmail, password: String(password) });
       if (error) throw error;
-      return data?.user ?? null;
-    }
-
-    const users = app.getUsers();
-    const user = users.find((entry) => entry.email.toLowerCase() === cleanEmail && entry.password === cleanPassword);
-    if (!user) {
-      throw new Error('Identifiants incorrects.');
-    }
-
-    app.setCurrentUser({ id: user.id, username: user.username, email: user.email });
-    return user;
-  };
-
-  app.signOut = async () => {
-    if (client) {
-      await client.auth.signOut();
-    }
-    app.setCurrentUser(null);
-  };
-
-  app.getPosts = async () => {
-    if (client) {
-      const { data, error } = await client
+      return normalizeUser(data.user);
+    },
+    async signOut() {
+      if (!client) return;
+      const { error } = await client.auth.signOut();
+      if (error) throw error;
+    },
+    async getPosts() {
+      const { data, error } = await requireClient()
         .from('posts')
-        .select('id, content, created_at, profiles(username)')
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        return data.map((post) => ({
-          id: post.id,
-          author: post.profiles?.username || 'Utilisateur',
-          content: post.content,
-          time: new Date(post.created_at).toLocaleString('fr-FR', {
-            dateStyle: 'short',
-            timeStyle: 'short'
-          })
-        }));
-      }
-    }
-
-    return storage.get('freshnet-demo-posts', [
-      {
-        id: 'welcome-post',
-        author: 'Freshnet',
-        content: 'Bienvenue sur Freshnet ! Partage tes idées et rejoins la communauté.',
-        time: 'À l\'instant'
-      }
-    ]);
-  };
-
-  app.createPost = async (content) => {
-    const cleanContent = String(content || '').replace(/[<>]/g, '').trim().slice(0, 500);
-
-    if (!cleanContent) {
-      throw new Error('Votre message est vide.');
-    }
-
-    if (client) {
-      const { data: { user } } = await client.auth.getUser();
-      if (!user) {
-        throw new Error('Vous devez être connecté pour publier.');
-      }
-
-      const { error } = await client.from('posts').insert({
-        content: cleanContent,
-        user_id: user.id
-      });
-
+        .select('id, content, created_at, profiles!posts_user_id_fkey(username)')
+        .order('created_at', { ascending: false })
+        .limit(100);
       if (error) throw error;
-      return true;
+      return (data || []).map((post) => ({
+        id: post.id,
+        author: post.profiles?.username || 'Utilisateur',
+        content: post.content,
+        createdAt: post.created_at
+      }));
+    },
+    async createPost(content) {
+      const cleanContent = String(content || '').trim();
+      if (!cleanContent || cleanContent.length > 500) throw new Error('Le message doit contenir entre 1 et 500 caractères.');
+      const supabase = requireClient();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('Tu dois être connecté pour publier.');
+      const { error } = await supabase.from('posts').insert({ user_id: user.id, content: cleanContent });
+      if (error) throw error;
     }
-
-    const posts = storage.get('freshnet-demo-posts', []);
-    posts.push({
-      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-      author: 'Moi',
-      content: cleanContent,
-      time: 'À l\'instant'
-    });
-    storage.set('freshnet-demo-posts', posts);
-    return true;
   };
-
-  window.Freshnet = app;
 })();
